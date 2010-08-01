@@ -66,10 +66,10 @@
 		     (list
 		      (make-plugin-command
 		       (regexp "time")
-		       #f
+		       '*
 		       "time: Tell the time"
 		       (lambda (nick reply-to channel all)
-			 (irc:say *con* (sprintf "It's ~A, ~A" (seconds->string (current-seconds)) nick) reply-to))))
+			 (irc:say *con* (sprintf "~A: It's ~A" nick (seconds->string (current-seconds))) reply-to))))
 		     '())))
 
 (register-plugin! 'talking

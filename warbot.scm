@@ -44,6 +44,7 @@
 
 (define *botnick* "WarBot2")
 (define *conf-filename* "warbot.conf")
+(define *database-filename* "warbot.db")
 
 ;; Global state
 
@@ -53,8 +54,7 @@
 
 (define *bot-user* (make-user *botnick* #f '* '*))
 
-(define *users* (list
-		 (cons *botnick* *bot-user*)))
+(define *users* '())
 
 (define *nicks* '())
 
@@ -77,14 +77,23 @@
 		       *nicks*))
 	  new-nick))))
 
+;; power can be:
+;; - a symbol, which must be in the user's power list, or the user's power list is '*
+;; - '*, in which case the nick has the power, regardless
+;; - #f, in which case the nick does not have the power, regardless
+;; - '*authenticated, in which case the nick has the power if it's authenticated
 (define (has-power? nick power)
-  (let* ((nick* (get-nick nick))
-	 (user (nick-authenticated-user nick*)))
-    (if user
-	(or
-	 (eq? (user-powers user) '*)
-	 (member power (user-powers user)))
-	#f)))
+  (and
+   power
+   (or (eq? power '*)
+       (let* ((nick* (get-nick nick))
+	      (user (nick-authenticated-user nick*)))
+	 (if user
+	     (or
+	      (eq? power '*authenticated)
+	      (eq? (user-powers user) '*)
+	      (member power (user-powers user)))
+	     #f)))))
 
 (define (is-authenticated? nick)
   (let* ((nick* (get-nick nick))
@@ -127,18 +136,16 @@
 (define (for-each-privmsg-command nick func)
   (for-each (lambda (plugin)
 	      (for-each (lambda (cmd)
-			  (if
-			   (or (eq?  (plugin-command-power-needed cmd) #f) (has-power? nick (plugin-command-power-needed cmd)))
-			   (func cmd)))
+			  (if (has-power? nick (plugin-command-power-needed cmd))
+			      (func cmd)))
 			(plugin-privmsg-commands plugin)))
 	    *plugins*))
 
 (define (for-each-channel-command nick func)
   (for-each (lambda (plugin)
 	      (for-each (lambda (cmd)
-			  (if
-			   (or (eq? (plugin-command-power-needed cmd) #f) (has-power? nick (plugin-command-power-needed cmd)))
-			   (func cmd)))
+			  (if (has-power? nick (plugin-command-power-needed cmd))
+			      (func cmd)))
 			(plugin-channel-commands plugin)))
 	    *plugins*))
 
@@ -256,14 +263,38 @@
 	(match (car configuration)
 	       (('load module) (load-module! module))
 	       (('plugin plugin . config) (enable-plugin! plugin config))
-	       (('channel chan) (ensure-channel-membership! chan))
-	       (('user user pass powers op-channels) (load-user! user pass powers op-channels))
 	       (else (printf "ERROR: Unknown configuration directive: ~S\n" (car configuration))))
 	(load-config!* (cdr configuration)))))
 
 (define (load-config! configuration)
   (disable-plugins!)
   (load-config!* configuration))
+
+(define (load-database! db)
+  (if (null? db)
+      (void)
+      (begin
+	(match (car db)
+	       (('channel chan) (ensure-channel-membership! chan))
+	       (('user user pass powers op-channels) (load-user! user pass powers op-channels))
+	       (else (printf "ERROR: Unknown database directive: ~S\n" (car db))))
+	(load-database! (cdr db)))))
+
+(define (save-database)
+  (for-each
+   (lambda (channel-pair)
+     (write `(channel ,(car channel-pair)))
+     (newline)) *channels*)
+  (for-each
+   (lambda (user-pair)
+     (write `(user ,(car user-pair)
+		   ,(user-password (cdr user-pair))
+		   ,(user-powers (cdr user-pair))
+		   ,(user-op-channels (cdr user-pair))))
+     (newline)) *users*))
+
+(define (save-database!)
+  (with-output-to-file *database-filename* save-database))
 
 ;; High-level event handlers
 
@@ -325,9 +356,11 @@
 			   (irc:say *con* (sprintf " ~A" text) nick))))
 
     (irc:say *con* "Here are the commands you can PM me:" nick)
-    (irc:say *con* " auth <user> <pass>: Authenticate yourself to me" nick)
-    (if (is-authenticated? nick)
-	(irc:say *con* " op me: Ask me to op you in channels you're authorised for" nick))
+
+    (suggest-command "auth <user> <pass>: Authenticate yourself to me")
+
+    (if (has-power? nick '*authenticated)
+	(suggest-command "op me: Ask me to op you in channels you're authorised for"))
 
     (if (has-power? nick 'dump)
 	(suggest-command "dump: Send a status dump"))
@@ -517,27 +550,28 @@
 
   (irc:add-message-handler!
    *con* irc-error command: "ERROR")
-  
+
   (irc:add-message-handler!
    *con* message-dispatch command: "PRIVMSG")
-  
+
   (irc:add-message-handler!
    *con* join command: "JOIN")
-  
+
   (irc:add-message-handler!
    *con* part command: "PART")
-  
+
   (irc:add-message-handler!
    *con* mode command: "MODE")
-  
+
   (irc:add-message-handler!
    *con* invite command: "INVITE")
-  
+
   (irc:add-message-handler!
    *con* names code: 353)
-  
+
   (load-config! (with-input-from-file *conf-filename* read-file))
-  
+  (load-database! (with-input-from-file *database-filename* read-file))
+
   (condition-case (irc:run-message-loop *con* debug: #t pong: #t)
 		  (ex (i/o net)
 		      (irc:disconnect *con*)
