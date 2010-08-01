@@ -42,7 +42,8 @@
 
 ;; Config
 
-(define *botnick* "WarBot2")
+(define *botnick* "WarBot")
+(define *irc-server* "irc.warhead.org.uk")
 (define *conf-filename* "warbot.conf")
 (define *database-filename* "warbot.db")
 
@@ -61,7 +62,7 @@
 (define *channels* '())
 
 (define *con*
-  (irc:connection server: "irc.warhead.org.uk" nick: "WarBot2") )
+  (irc:connection server: *irc-server* nick: *botnick*))
 
 ;; Utility accessors
 
