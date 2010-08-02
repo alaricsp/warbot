@@ -417,7 +417,7 @@
 	  (send-help nick))))))
 
 (define *mention-re*
-  (regexp `(seq bos ,*botnick* (? ":") (* whitespace) (submatch (* any)) eos) #t))
+  (regexp `(seq bos ,*botnick* ":" (* whitespace) (submatch (* any)) eos) #t))
 
 (define (send-channel-help nick)
   (let ((suggest-command (lambda (help)
