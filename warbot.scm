@@ -491,7 +491,10 @@
   #f)
 
 (define (message-dispatch message)
-  (let ((body (cadr (irc:message-parameters message))))
+  (let* ((body* (cadr (irc:message-parameters message)))
+	 (body (if (irc:extended-data? body*)
+		   (irc:extended-data-content body*)
+		   body*)))
     (cond
      ((string=? (irc:message-receiver message) *botnick*)
       (privmsg (irc:message-sender message) body))
