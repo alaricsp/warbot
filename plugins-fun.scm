@@ -28,3 +28,35 @@
 		      )
 		     '())))
 
+
+(register-plugin! 'dance
+		  (lambda (name)
+		    (make-plugin
+		     name
+		     (lambda ()
+		       (void))
+		     (lambda ()
+		       (void))
+		     (lambda (nick channel)
+		       (void))
+		     (lambda (nick channel)
+		       (void))
+		     (lambda (nick channel text)
+		       (void))
+		     (list
+		      (make-plugin-command
+		       (regexp `(: ,name))
+		       '*
+		       (sprintf "~A: Dance for us" name)
+		       (lambda (nick reply-to channel all)
+			 (let loop ((moves '(":D|-<" ":D/-<" ":D\\-<" ":D|-<")))
+			   (if (null? moves)
+			       (void)
+			       (begin
+				 (irc:say *con* (car moves) reply-to)
+				 (if (not (null? (cdr moves)))
+				     (sleep 1))
+				 (loop (cdr moves)))))))
+		      )
+		     '())))
+
