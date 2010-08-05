@@ -5,6 +5,8 @@
 (use posix)
 (use srfi-1)
 (use srfi-13)
+(use postgresql)
+(use sql-null)
 
 (define-record user
   name
@@ -48,6 +50,8 @@
 (define *database-filename* "warbot.db")
 
 ;; Global state
+
+(define *sql-connection* #f)
 
 (define *plugin-factories* '())
 
@@ -225,14 +229,7 @@
 			   *users*)))))))
 
 (define (load-module! plugin)
-  (call-with-current-continuation
-   (lambda (k)
-     (with-exception-handler
-      (lambda (exn)
-	(printf "Error loading module ~A: ~S\n" plugin exn)
-	(k (void)))
-      (lambda ()
-	(load plugin))))))
+  (load plugin))
 
 (define (get-plugin-factory plugin factories)
   (cond
@@ -264,11 +261,13 @@
 	(match (car configuration)
 	       (('load module) (load-module! module))
 	       (('plugin plugin . config) (enable-plugin! plugin config))
+	       (('database connection) (set! *sql-connection* (connect connection)))
 	       (else (printf "ERROR: Unknown configuration directive: ~S\n" (car configuration))))
 	(load-config!* (cdr configuration)))))
 
 (define (load-config! configuration)
   (disable-plugins!)
+  (if *sql-connection* (disconnect *sql-connection*))
   (load-config!* configuration))
 
 (define (load-database! db)
@@ -296,6 +295,20 @@
 
 (define (save-database!)
   (with-output-to-file *database-filename* save-database))
+
+;; Utilities for the SQL db
+
+;; A schema is an alist mapping table name strings to SQL strings
+;; that create the table if it doesn't exist.
+(define (ensure-db-schema schema)
+  (for-each (lambda (table)
+	      (let ((matches (car (row-values (query
+					       *sql-connection*
+					       "SELECT COUNT(*) FROM pg_tables WHERE schemaname = 'public' AND tablename = $1"
+					       (car table))))))
+		(if (zero? matches)
+		   (query *sql-connection* (cdr table)))))
+	    schema))
 
 ;; High-level event handlers
 
@@ -349,8 +362,15 @@
 	  (irc:say *con* "I'm sorry, that username/password is invalid" nick)))))
 
 (define (process-reload nick)
-  (load-config! (with-input-from-file *conf-filename* read-file))
-  (irc:say *con* "Reloaded configuration" nick))
+  (call-with-current-continuation
+   (lambda (k)
+     (with-exception-handler
+      (lambda (exn)
+	(irc:say *con* "Error reloading: ~S\n" plugin exn)
+	(k (void)))
+      (lambda ()
+	  (load-config! (with-input-from-file *conf-filename* read-file))
+	    (irc:say *con* "Reloaded configuration" nick))))))
 
 (define (send-help nick)
   (let ((suggest-command (lambda (text)
