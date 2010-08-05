@@ -41,7 +41,7 @@
 							  (void))
 							(list
 							 (make-plugin-command
-							  (regexp (sprintf "~A +([^ ]+) +(.*)" name))
+							  (regexp (sprintf "~A +([^ ]+) +(.*)" name) #t)
 							  '*
 							  (sprintf "~A <nick> <message>: Leave a message for a nick" name)
 							  (lambda (from-nick reply-to channel all to-nick message)

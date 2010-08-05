@@ -38,7 +38,7 @@
 		       (void))
 		     (list
 		      (make-plugin-command
-		       (regexp "eval +(.*)")
+		       (regexp "eval +(.*)" #t)
 		       'eval
 		       "eval <scheme>: Run some arbitrary code"
 		       (lambda (nick reply-to channel all message)
@@ -65,7 +65,7 @@
 		     (lambda (nick channel text) (void))
 		     (list
 		      (make-plugin-command
-		       (regexp "time")
+		       (regexp "time" #t)
 		       '*
 		       "time: Tell the time"
 		       (lambda (nick reply-to channel all)
@@ -84,7 +84,7 @@
 		     '()
 		     (list
 		      (make-plugin-command
-		       (regexp "wall +(.*)")
+		       (regexp "wall +(.*)" #t)
 		       'wall
 		       "wall <message>: Send a message to all channels"
 		       (lambda (nick reply-to channel all message)
@@ -93,7 +93,7 @@
 			    (irc:say *con* message channel))
 			  (map car *channels*))))
 		      (make-plugin-command
-		       (regexp "say +([^ ]+) +(.*)")
+		       (regexp "say +([^ ]+) +(.*)" #t)
 		       'say
 		       "say <channel|user> <message>: Send a message"
 		       (lambda (nick reply-to channel all receiver message)
