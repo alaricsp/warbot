@@ -16,6 +16,7 @@
 
 (define-record nick
   name
+  last-sent-help ;; #f if never sent help
   authenticated-user ;; #f if not authenticated
   channels ;; list of channels present on
   op-channels) ;; list of channels with ops on
@@ -74,7 +75,7 @@
   (let ((search (assoc name *nicks*)))
     (if search
 	(cdr search)
-	(let ((new-nick (make-nick name #f '() '())))
+	(let ((new-nick (make-nick name #f #f '() '())))
 	  (if (string=? name *botnick*)
 	      (nick-authenticated-user-set! new-nick *bot-user*))
 	  (set! *nicks* (cons
@@ -372,33 +373,40 @@
 	  (load-config! (with-input-from-file *conf-filename* read-file))
 	    (irc:say *con* "Reloaded configuration" nick))))))
 
+(define (older-than timestamp age)
+  (or
+   (not timestamp)
+   (< timestamp (- (current-seconds) age))))
+
 (define (send-help nick)
-  (let ((suggest-command (lambda (text)
-			   (irc:say *con* (sprintf " ~A" text) nick))))
+  (if (older-than (nick-last-sent-help (get-nick nick)) 60)
+   (let ((suggest-command (lambda (text)
+			    (irc:say *con* (sprintf " ~A" text) nick))))
+     (nick-last-sent-help-set! (get-nick nick) (current-seconds))
 
-    (irc:say *con* "Here are the commands you can PM me:" nick)
-
-    (suggest-command "auth <user> <pass>: Authenticate yourself to me")
-
-    (if (has-power? nick '*authenticated)
-	(suggest-command "op me: Ask me to op you in channels you're authorised for"))
-
-    (if (has-power? nick 'dump)
-	(suggest-command "dump: Send a status dump"))
-    (if (has-power? nick 'reload)
-	(suggest-command "reload: Reload configuration file"))
-
-    (for-each-privmsg-command nick
-     (lambda (command)
-       (suggest-command
-	(plugin-command-help command))))
-
-    (for-each-channel-command nick
-     (lambda (command)
-       (suggest-command
-	(plugin-command-help command))))
-
-    (irc:say *con* "That's all." nick)))
+     (irc:say *con* "Here are the commands you can PM me:" nick)
+     
+     (suggest-command "auth <user> <pass>: Authenticate yourself to me")
+     
+     (if (has-power? nick '*authenticated)
+	 (suggest-command "op me: Ask me to op you in channels you're authorised for"))
+     
+     (if (has-power? nick 'dump)
+	 (suggest-command "dump: Send a status dump"))
+     (if (has-power? nick 'reload)
+	 (suggest-command "reload: Reload configuration file"))
+     
+     (for-each-privmsg-command nick
+			       (lambda (command)
+				 (suggest-command
+				  (plugin-command-help command))))
+     
+     (for-each-channel-command nick
+			       (lambda (command)
+				 (suggest-command
+				  (plugin-command-help command))))
+     
+     (irc:say *con* "That's all." nick))))
 
 (define (privmsg nick body)
   (regex-case
@@ -440,15 +448,17 @@
   (regexp `(seq bos ,*botnick* ":" (* whitespace) (submatch (* any)) eos) #t))
 
 (define (send-channel-help nick)
-  (let ((suggest-command (lambda (help)
-			   (irc:say *con* (sprintf " ~A: ~A" *botnick* help) nick))))
+  (if (older-than (nick-last-sent-help (get-nick nick)) 60)
+   (let ((suggest-command (lambda (help)
+			    (irc:say *con* (sprintf " ~A: ~A" *botnick* help) nick))))
+     (nick-last-sent-help-set! (get-nick nick) (current-seconds))
 
-    (irc:say *con* "Here are the commands you can use in channels I'm listening to:" nick)
-    (for-each-channel-command nick
-     (lambda (command)
-       (suggest-command
-	(plugin-command-help command))))
-    (irc:say *con* "That's all." nick)))
+     (irc:say *con* "Here are the commands you can use in channels I'm listening to:" nick)
+     (for-each-channel-command nick
+			       (lambda (command)
+				 (suggest-command
+				  (plugin-command-help command))))
+     (irc:say *con* "That's all." nick))))
 
 (define (channel-mention nick channel body)
   (nick-is-in-channel! channel nick 'unknown)
@@ -516,6 +526,8 @@
 		   (irc:extended-data-content body*)
 		   body*)))
     (cond
+     ((string=? (irc:message-sender message) *botnick*)
+      #f) ; Ignore all messages from self (to avoid feedback loops!)
      ((string=? (irc:message-receiver message) *botnick*)
       (privmsg (irc:message-sender message) body))
      ((string-match *mention-re* body)
