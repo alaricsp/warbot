@@ -66,8 +66,7 @@
 
 (define *channels* '())
 
-(define *con*
-  (irc:connection server: *irc-server* nick: *botnick*))
+(define *con* #f)
 
 ;; Utility accessors
 
@@ -159,6 +158,12 @@
   (set! *plugin-factories*
 	(cons (cons plugin-name plugin-factory) *plugin-factories*)))
 
+(define (force-oper channel nick reason)
+  (if *has-oper*
+      (let ((command (sprintf "SAMODE ~A +o ~A" channel nick)))
+	(printf "~S ~A\n" command reason)
+	(irc:command *con* command))))
+
 ;; FIXME: Abstract nick-is-in-channel and nick-is-not-in-channel better!
 
 ; op? is #t for an op, #f for a non-op, and anything else
@@ -181,7 +186,9 @@
 	      (if (member nick* (channel-ops channel*))
 		  (channel-ops-set! channel* (filter (lambda (nick) (not (eq? nick nick*))) (channel-ops channel*))))
 	      (if (member channel* (nick-op-channels nick*))
-		  (nick-op-channels-set! nick* (filter (lambda (channel) (not (eq? channel channel*))) (nick-op-channels nick*)))))))
+		  (nick-op-channels-set! nick* (filter (lambda (channel) (not (eq? channel channel*))) (nick-op-channels nick*))))
+	      (if (string=? nick *botnick*)
+		  (force-oper channel *botnick* "Seemed to need them")))))
     (void)))
 
 (define (nick-is-not-in-channel! channel nick)
@@ -204,6 +211,12 @@
 	 (nick* (get-nick nick))
 	 (ops (channel-ops channel*)))
     (member nick* ops)))
+
+(define (is-in? channel nick)
+  (let* ((channel* (get-channel channel))
+	 (nick* (get-nick nick))
+	 (nicks (channel-nicks channel*)))
+    (member nick* nicks)))
 
 (define (ensure-channel-membership! channel)
   (if (assoc channel *channels*)
@@ -263,6 +276,7 @@
 	       (('load module) (load-module! module))
 	       (('plugin plugin . config) (enable-plugin! plugin config))
 	       (('database connection) (set! *sql-connection* (connect connection)))
+	       (('oper user pass) (irc:command *con* (sprintf "OPER ~A ~A" user pass)))
 	       (else (printf "ERROR: Unknown configuration directive: ~S\n" (car configuration))))
 	(load-config!* (cdr configuration)))))
 
@@ -561,6 +575,19 @@
 (define (irc-error message)
   (printf "IRC ERROR: ~A\n" (irc:message-body message)))
 
+(define (login-complete message)
+  (load-config! (with-input-from-file *conf-filename* read-file))
+  (load-database! (with-input-from-file *database-filename* read-file)))
+
+(define (oper-complete message)
+  (set! *has-oper* #t)
+  (for-each
+   (lambda (channelpair)
+     (if (and (is-in? (car channelpair) *botnick*)
+	      (not (is-op? (car channelpair) *botnick*)))
+	 (force-oper (car channelpair) *botnick* "/OPER completed")))
+   *channels*))
+
 (define (test message)
   (printf
    "prefix:~S command:~S timestamp:~S code:~S body:~S parameters:~S index:~S sender:~S receiver:~S\n"
@@ -579,10 +606,14 @@
 ;; Initialisation
 
 (let reconnect ()
+  (set! *con* (irc:connection server: *irc-server* nick: *botnick*))
+
   (irc:connect *con*)
 
-  #;(irc:add-message-handler!
-  *con* test)
+  (set! *has-oper* #f)
+
+  (irc:add-message-handler!
+   *con* test)
 
   (irc:add-message-handler!
    *con* irc-error command: "ERROR")
@@ -605,8 +636,14 @@
   (irc:add-message-handler!
    *con* names code: 353)
 
-  (load-config! (with-input-from-file *conf-filename* read-file))
-  (load-database! (with-input-from-file *database-filename* read-file))
+  (irc:add-message-handler!
+   *con* login-complete code: 005)
+
+  (irc:add-message-handler!
+   *con* oper-complete code: 381)
+
+  ; FIXME: Send a /oper command on login, and then +o myself in channels
+  ; when I join
 
   (condition-case (irc:run-message-loop *con* debug: #t pong: #t)
 		  (ex (i/o net)
