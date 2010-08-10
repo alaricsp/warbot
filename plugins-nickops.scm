@@ -52,3 +52,55 @@
        )
       '()))))
 
+;; "su" plugin lets nominated users force certain modes
+;; Configuration is an alist of /SAMODE commands, in effect, keyed
+;; on user name (NOT nick).
+;; Each SAMODE is specified as a list of channel name, then
+;; a list of channel modes to set, then a list of channel-user modes
+;; to set (with the nick of the user specified)
+;; Eg:
+;; ("bob" ("#test" ("+u") ("+o")) ("#foo" () ("+o")))
+
+(register-plugin! 'su
+		  (lambda (name *user-powers*)
+		    (make-plugin
+		     name
+		     (lambda ()
+		       (void))
+		     (lambda ()
+		       (void))
+		     (lambda (nick channel)
+		       (void))
+		     (lambda (nick channel)
+		       (void))
+		     (lambda (nick channel text)
+		       (void))
+		     '()
+		     (list
+		      (make-plugin-command
+		       (regexp name)
+		       'su
+		       (sprintf "~A: Grant you special powers from my database" name)
+		       (lambda (nick reply-to channel all)
+			 (and-let* ((nick* (get-nick nick))
+				    (user* (nick-authenticated-user nick*))
+				    (user (user-name user*))
+				    (powers (assoc user *user-powers*)))
+				   (for-each
+				    (lambda (channel-powers)
+				      (printf "CHANNEL POWERS: ~S\n" channel-powers)
+				      (let ((channel (car channel-powers))
+					    (chanmodes (cadr channel-powers))
+					    (usermodes (caddr channel-powers)))
+					(for-each
+					 (lambda (mode)
+					   (printf "CHANNEL MODE: ~S\n" mode)
+					   (irc:command *con* (sprintf "SAMODE ~A ~A" channel mode)))
+					 chanmodes)
+
+					(for-each
+					 (lambda (mode)
+					   (printf "USER MODE: ~S\n" mode)
+					   (irc:command *con* (sprintf "SAMODE ~A ~A ~A" channel mode nick)))
+					 usermodes)))
+				    (cdr powers)))))))))
