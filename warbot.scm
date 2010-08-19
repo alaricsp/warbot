@@ -8,6 +8,10 @@
 (use postgresql)
 (use sql-null)
 
+;; TODOS:
+;; * Make WarBot store the users/channels in Postgres, not in a silly
+;;   text file.
+
 (define-record user
   name
   password
@@ -45,7 +49,7 @@
 
 ;; Config
 
-(define *botnick* "WarBot")
+(define *botnick* "WarBot2")
 (define *irc-server* "irc.warhead.org.uk")
 (define *conf-filename* "warbot.conf")
 (define *database-filename* "warbot.db")
@@ -53,6 +57,8 @@
 ;; Global state
 
 (define *sql-connection* #f)
+
+(define *has-oper* #f)
 
 (define *plugin-factories* '())
 
@@ -513,6 +519,19 @@
 	channel)))
     (nick-is-not-in-channel! channel nick)))
 
+(define (quit message)
+  (let* ((nick (irc:message-sender message))
+	 (nick* (get-nick nick)))
+    (for-each
+     (lambda (channel)
+       (for-each-plugin
+	(lambda (plugin)
+	  ((plugin-leave! plugin)
+	   nick
+	   channel)))
+       (nick-is-not-in-channel! channel nick))
+     (map channel-name (nick-channels nick*)))))
+
 (define (nick-mode message)
   (let* ((channel (car (irc:message-parameters message)))
 	 (modeflags (cadr (irc:message-parameters message)))
@@ -632,6 +651,9 @@
 
   (irc:add-message-handler!
    *con* invite command: "INVITE")
+
+  (irc:add-message-handler!
+   *con* quit command: "QUIT")
 
   (irc:add-message-handler!
    *con* names code: 353)
