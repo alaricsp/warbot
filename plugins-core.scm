@@ -30,17 +30,16 @@
 		       (if allow-new-users? '* #f)
 		       "register <username> <password>: Register a new account"
 		       (lambda (nick reply-to channel all username password)
-			 (let* ((nick* (get-nick nick))
-				(new-user
-				 (make-user username
-					    password
-					    new-user-powers
-					    '())))
-			   (if (get-user username)
-			       (begin
-				 (irc:say *con* "I'm sorry, a user with that name already exists!" reply-to))
-			       (begin
+			 (if (get-user username)
+			     (begin
+			       (irc:say *con* "I'm sorry, a user with that name already exists!" reply-to))
+			     (let* ((nick* (get-nick nick))
+				    (new-user
+				     (make-user username
+						password
+						new-user-powers
+						'())))
 				 (nick-authenticated-user-set! nick* new-user)
 				 (irc:say *con* (sprintf "Welcome, ~A" username) reply-to)
 				 (set! *users* (cons (cons username new-user) *users*))
-				 (save-database!))))))))))
+				 (save-database!)))))))))
