@@ -210,6 +210,11 @@
 	(channel-ops-set! channel* (filter (lambda (nick) (not (eq? nick nick*))) (channel-ops channel*))))
     (if (member channel* (nick-op-channels nick*))
 	(nick-op-channels-set! nick* (filter (lambda (channel) (not (eq? channel channel*))) (nick-op-channels nick*))))
+
+    ; If a nick is gone from all channels, de-auth it
+    (if (zero? (length (nick-channels nick*)))
+	(nick-authenticated-user-set! nick* #f))
+
     (void)))
 
 (define (is-op? channel nick)
