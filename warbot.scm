@@ -1,4 +1,5 @@
 (use irc)
+(use regex)
 (use regex-case)
 (use matchable)
 
@@ -49,7 +50,7 @@
 
 ;; Config
 
-(define *botnick* "WarBot2")
+(define *botnick* "WarBot")
 (define *irc-server* "irc.warhead.org.uk")
 (define *conf-filename* "warbot.conf")
 (define *database-filename* "warbot.db")
