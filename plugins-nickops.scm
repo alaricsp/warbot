@@ -53,8 +53,8 @@
                (query *sql-connection*
                       "INSERT INTO nickops_tells (sender_nick, recipient_nick, channel, content, when_written) VALUES ($1,$2,$3,$4,NOW())"
                       from-nick to-nick
-                      (if channel channel (sql-null))  message))
-              (irc:say *con* "I'll pass that on." reply-to))))
+                      (if channel channel (sql-null))  message)
+               (irc:say *con* "I'll pass that on." reply-to)))))
        )
       '()))))
 
