@@ -7,7 +7,7 @@
 
 (define *summary-length* 80)
 (define *timeout* 2)
-(define *html-length* 8192)
+(define *html-length* 65536)
 
 (define (fetch url)
   (receive
@@ -35,10 +35,9 @@
      ((string=? type "text/html")
       (let* ((sxml (with-input-from-string (string-append body "\"") html->sxml))
              (titles (map cadr
-                          ((sxpath '(// html head title))
+                          ((sxpath '(// head // title))
                            sxml)))
-             ;; FIXME: Restrict to p/div/etc. to avoid picking up script tags
-             (bodies ((sxpath '(// html body // *text*)) sxml))
+             (bodies ((sxpath "//body//*[self::div or self::p]/text()") sxml))
              (title (if (null? titles) "no title" (string-trim-both (car titles))))
              (body (if (null? bodies)
                        "no page text"
@@ -50,9 +49,10 @@
                                 ;; Remove tedious whitespace
                                 (string-trim-both (irregex-replace/all '(+ whitespace) body " ")))
                               bodies))
-                        "/")))
-             (summary (limit-string body *summary-length*)))
-        (sprintf "[~a]: ~a" title summary)))
+                        "/"))))
+        (sprintf "[~a]: ~a"
+                 (limit-string title *summary-length*)
+                 (limit-string body *summary-length*))))
      (body (sprintf "[no title]: ~a"
                     (limit-string
                      (string-trim-both (irregex-replace/all '(+ whitespace) body " "))
@@ -81,6 +81,10 @@
  (pp (describe-url "http://www.snell-pym.org.uk/alaric/alaric-foaf.rdf"))
  (pp (describe-url "http://love.warhead.org.uk/~alaric/test.txt"))
  (pp (describe-url "https://www.kitten-technologies.org.uk/")))
+
+(pp (describe-url "http://fortune.com/2015/10/15/theranos-elizabeth-holmes-wsj/"))
+(pp (describe-url "https://science.slashdot.org/story/16/06/01/1656211/forbes-just-cut-its-estimate-of-theranos-ceo-elizabeth-holmess-net-worth-from-45-billion-to-zero"))
+(exit)
 
 (register-plugin!
  'url-watcher
