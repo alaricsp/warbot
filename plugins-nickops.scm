@@ -16,7 +16,7 @@
                                 (begin ;; privmsg
                                   (irc:say *con* (sprintf "~A told me to tell you: ~A" sender content) nick)
                                   (query *sql-connection*
-                                         "DELETE FROM nickops_tells WHERE recipient_nick = $1 AND sender_nick = $2 AND channel IS NULL AND content = $3 and when_written = $4"
+                                         "DELETE FROM nickops_tells WHERE LOWER(recipient_nick) = LOWER($1) AND sender_nick = $2 AND channel IS NULL AND content = $3 and when_written = $4"
                                          nick sender content when))
                                 (begin ;; in-channel
                                   (irc:say *con* (sprintf "~A: ~A told me to tell you: ~A" nick sender content) channel)
