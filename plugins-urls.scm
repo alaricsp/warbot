@@ -80,11 +80,9 @@
  (pp (describe-url "http://www.snell-pym.org.uk/"))
  (pp (describe-url "http://www.snell-pym.org.uk/alaric/alaric-foaf.rdf"))
  (pp (describe-url "http://love.warhead.org.uk/~alaric/test.txt"))
- (pp (describe-url "https://www.kitten-technologies.org.uk/")))
-
-(pp (describe-url "http://fortune.com/2015/10/15/theranos-elizabeth-holmes-wsj/"))
-(pp (describe-url "https://science.slashdot.org/story/16/06/01/1656211/forbes-just-cut-its-estimate-of-theranos-ceo-elizabeth-holmess-net-worth-from-45-billion-to-zero"))
-(exit)
+ (pp (describe-url "https://www.kitten-technologies.org.uk/"))
+ (pp (describe-url "http://fortune.com/2015/10/15/theranos-elizabeth-holmes-wsj/"))
+ (pp (describe-url "https://science.slashdot.org/story/16/06/01/1656211/forbes-just-cut-its-estimate-of-theranos-ceo-elizabeth-holmess-net-worth-from-45-billion-to-zero")))
 
 (register-plugin!
  'url-watcher
