@@ -84,11 +84,12 @@
 
 (register-plugin!
  'url-watcher
- (lambda (name logfile)
+ (lambda (name logdir)
    (define (log-url! nick channel url description)
-     (let ((fd (file-open logfile (+ open/wronly open/append open/creat))))
+     (let ((fd (file-open (make-pathname logdir (string-append channel ".log"))
+                          (+ open/wronly open/append open/creat))))
        (when fd
-             (file-write fd (sprintf "~s\n" (list (current-seconds) nick channel url description))))
+             (file-write fd (sprintf "~s\n" (list (current-seconds) nick url description))))
        (file-close fd))
      (when description
       (irc:say *con* description channel)))
