@@ -1,3 +1,4 @@
+(use utils)
 
 (register-plugin! 'fortune
 		  (lambda (name fortune-command)
