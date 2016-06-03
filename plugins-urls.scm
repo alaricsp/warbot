@@ -69,9 +69,13 @@
    *timeout*
    (lambda ()
      (handle-exceptions exn
-                        "Error fetching page"
+                        (sprintf "Error fetching ~s: ~s in ~s"
+                                 url
+                                 ((condition-property-accessor 'exn 'message "Unknown error") exn)
+                                 (cons ((condition-property-accessor 'exn 'location (void)) exn)
+                                       ((condition-property-accessor 'exn 'arguments '()) exn)))
                         (describe-url* url)))
-   "Timed out"))
+   (sprintf "Timed out fetching ~s" url)))
 
 #;(begin
  (pp (describe-url "/etc/passwd"))
@@ -82,7 +86,8 @@
  (pp (describe-url "http://love.warhead.org.uk/~alaric/test.txt"))
  (pp (describe-url "https://www.kitten-technologies.org.uk/"))
  (pp (describe-url "http://fortune.com/2015/10/15/theranos-elizabeth-holmes-wsj/"))
- (pp (describe-url "https://science.slashdot.org/story/16/06/01/1656211/forbes-just-cut-its-estimate-of-theranos-ceo-elizabeth-holmess-net-worth-from-45-billion-to-zero")))
+ (pp (describe-url "https://science.slashdot.org/story/16/06/01/1656211/forbes-just-cut-its-estimate-of-theranos-ceo-elizabeth-holmess-net-worth-from-45-billion-to-zero"))
+ (pp (describe-url* "https://en.wikipedia.org/wiki/Archey's_frog")))
 
 (register-plugin!
  'url-watcher
