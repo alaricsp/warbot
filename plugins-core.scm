@@ -16,7 +16,7 @@
 		     '()
 		     (list
 		      (make-plugin-command
-		       (regexp "set-password +([^ ]*)" #t)
+		       (irregex "set-password +([^ ]*)")
 		       '*authenticated
 		       "set-password <password>: Reset your password"
 		       (lambda (nick reply-to channel all password)
@@ -26,7 +26,7 @@
 			   (save-database!))))
 
 		      (make-plugin-command
-		       (regexp "register +([^ ]+) +([^ ]*)" #t)
+		       (irregex "register +([^ ]+) +([^ ]*)")
 		       (if allow-new-users? '* #f)
 		       "register <username> <password>: Register a new account"
 		       (lambda (nick reply-to channel all username password)

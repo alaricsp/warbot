@@ -41,7 +41,7 @@
         (void))
       (list
        (make-plugin-command
-        (regexp (sprintf "~A +([^ :,;]+)[:,;]? +(.*)" name) #t)
+        (irregex (sprintf "~A +([^ :,;]+)[:,;]? +(.*)" name))
         '*
         (sprintf "~A <nick> <message>: Leave a message for a nick" name)
         (lambda (from-nick reply-to channel all to-nick message)
@@ -67,46 +67,47 @@
 ;; Eg:
 ;; ("bob" ("#test" ("+u") ("+o")) ("#foo" () ("+o")))
 
-(register-plugin! 'su
-                  (lambda (name *user-powers*)
-                    (make-plugin
-                     name
-                     (lambda ()
-                       (void))
-                     (lambda ()
-                       (void))
-                     (lambda (nick channel)
-                       (void))
-                     (lambda (nick channel)
-                       (void))
-                     (lambda (nick channel text)
-                       (void))
-                     '()
-                     (list
-                      (make-plugin-command
-                       (regexp name)
-                       'su
-                       (sprintf "~A: Grant you special powers from my database" name)
-                       (lambda (nick reply-to channel all)
-                         (and-let* ((nick* (get-nick nick))
-                                    (user* (nick-authenticated-user nick*))
-                                    (user (user-name user*))
-                                    (powers (assoc user *user-powers*)))
-                                   (for-each
-                                    (lambda (channel-powers)
-                                      (printf "CHANNEL POWERS: ~S\n" channel-powers)
-                                      (let ((channel (car channel-powers))
-                                            (chanmodes (cadr channel-powers))
-                                            (usermodes (caddr channel-powers)))
-                                        (for-each
-                                         (lambda (mode)
-                                           (printf "CHANNEL MODE: ~S\n" mode)
-                                           (irc:command *con* (sprintf "SAMODE ~A ~A" channel mode)))
-                                         chanmodes)
+(register-plugin!
+ 'su
+ (lambda (name *user-powers*)
+   (make-plugin
+    name
+    (lambda ()
+      (void))
+    (lambda ()
+      (void))
+    (lambda (nick channel)
+      (void))
+    (lambda (nick channel)
+      (void))
+    (lambda (nick channel text)
+      (void))
+    '()
+    (list
+     (make-plugin-command
+      (irregex name)
+      'su
+      (sprintf "~A: Grant you special powers from my database" name)
+      (lambda (nick reply-to channel all)
+        (and-let* ((nick* (get-nick nick))
+                   (user* (nick-authenticated-user nick*))
+                   (user (user-name user*))
+                   (powers (assoc user *user-powers*)))
+                  (for-each
+                   (lambda (channel-powers)
+                     (printf "CHANNEL POWERS: ~S\n" channel-powers)
+                     (let ((channel (car channel-powers))
+                           (chanmodes (cadr channel-powers))
+                           (usermodes (caddr channel-powers)))
+                       (for-each
+                        (lambda (mode)
+                          (printf "CHANNEL MODE: ~S\n" mode)
+                          (irc:command *con* (sprintf "SAMODE ~A ~A" channel mode)))
+                        chanmodes)
 
-                                        (for-each
-                                         (lambda (mode)
-                                           (printf "USER MODE: ~S\n" mode)
-                                           (irc:command *con* (sprintf "SAMODE ~A ~A ~A" channel mode nick)))
-                                         usermodes)))
-                                    (cdr powers)))))))))
+                       (for-each
+                        (lambda (mode)
+                          (printf "USER MODE: ~S\n" mode)
+                          (irc:command *con* (sprintf "SAMODE ~A ~A ~A" channel mode nick)))
+                        usermodes)))
+                   (cdr powers)))))))))

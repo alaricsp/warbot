@@ -16,7 +16,7 @@
                        (void))
                      (list
                       (make-plugin-command
-                       (regexp `(: ,name) #t)
+                       (irregex `(: ,name))
                        '*
                        (sprintf "~A: Tell us something funny" name)
                        (lambda (nick reply-to channel all)
@@ -45,7 +45,7 @@
                        (void))
                      (list
                       (make-plugin-command
-                       (regexp `(: ,name) #t)
+                       (irregex `(: ,name))
                        '*
                        (sprintf "~A: Dance for us" name)
                        (lambda (nick reply-to channel all)
