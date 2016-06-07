@@ -1,4 +1,5 @@
 (use irc)
+(use irregex) ;; FIXME: Migrate all regex code to use irregex apis
 (use regex)
 (use regex-case)
 (use matchable)
@@ -559,11 +560,40 @@
       (channel-mode message))
   #f)
 
+;; From http://wiki.mibbit.com/index.php/Formatting
+#|
+     Bold Text - Character \u0002 or \x2 (it can be copied from the output of /cs info #ch , a "square" following the "channel #ch" in some browsers)
+    Underlined Text - Character \u001F
+    Italic Text - Character \u0016 - not working in mibbit(?)
+    Color Text - Character \u0003 (followed by simple number codes to indicate the selected color)
+    Normal Text - Character \u000F or \uF
+|#
+;; From http://www.visualirc.net/tech-attrs.php
+#|
+
+|#
+
+(define *0-16re* '(or ("0123456789")
+                      (seq #\1 ("012345"))))
+
+(define *RGBre* '(= 6 ("0123456789abcdefABCDEF")))
+
+(define *formatting-re*
+  (irregex `(or ("\x02\x0e\x0f\x12\x16\x1d\x1f")
+                (seq ("\x03")
+                     (seq (? ,*0-16re*) (? #\, (? ,*0-16re*))))
+                (seq ("\x04")
+                     (seq (? ,*RGBre*) (? #\, (? ,*RGBre*)))))))
+
+(define (strip-formatting text)
+  (irregex-replace/all *formatting-re* text))
+
 (define (message-dispatch message)
   (let* ((body* (cadr (irc:message-parameters message)))
-	 (body (if (irc:extended-data? body*)
-		   (irc:extended-data-content body*)
-		   body*)))
+	 (body-with-formatting (if (irc:extended-data? body*)
+                                   (irc:extended-data-content body*)
+                                   body*))
+         (body (strip-formatting body-with-formatting)))
     (cond
      ((string=? (irc:message-sender message) *botnick*)
       #f) ; Ignore all messages from self (to avoid feedback loops!)

@@ -6,7 +6,7 @@
 (use intarweb)
 
 (define *summary-length* 80)
-(define *timeout* 2)
+(define *timeout* 5)
 (define *html-length* 65536)
 
 (define (fetch url)
