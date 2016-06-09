@@ -69,7 +69,14 @@
                        '*
                        "time: Tell the time"
                        (lambda (nick reply-to channel all)
-                         (irc:say *con* (sprintf "~A: It's ~A" nick (seconds->string (current-seconds))) reply-to))))
+                         (irc:say *con* (sprintf "~A: It's ~A, or ~A" nick
+                                                 (time->string
+                                                  (seconds->utc-time (current-seconds))
+                                                  "%a %G-W%V-%w %Y-%m-%d %H:%M:%S %Z")
+                                                 (time->string
+                                                  (seconds->local-time (current-seconds))
+                                                  "%a %G-W%V-%w %Y-%m-%d %H:%M:%S %Z"))
+                                  reply-to))))
                      '())))
 
 (register-plugin! 'talking
