@@ -37,8 +37,8 @@
              (titles (map cadr
                           ((sxpath '(// head // title))
                            sxml)))
-             (bodies ((sxpath "//body//*[self::div or self::p]/text()") sxml))
-             (title (if (null? titles) "no title" (string-trim-both (car titles))))
+             (bodies ((sxpath "//body//*[self::div or self::p or self::a]/text()") sxml))
+             (title (if (null? titles) "no title" (string-trim-both (irregex-replace/all '(+ whitespace) (car titles) " "))))
              (body (if (null? bodies)
                        "no page text"
                        (string-join ; Join all nonempty elements texts with /s
