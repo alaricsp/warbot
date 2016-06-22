@@ -101,7 +101,16 @@
      (when description
       (irc:say *con* description channel)))
 
-   (let ((url-regex (irregex 'http-url)))
+   (let ((url-regex (irregex '(w/nocase
+                               "http" (? "s") "://"
+                               (or (seq (+ domain-atom #\.) domain-atom)
+                                   ipv4-address) ;; (seq "[" ipv6-address "]")
+                               (? ":" (+ numeric)) ;; port
+                               ;; path
+                               (? "/" (* (or url-char "/"))
+                                  (? "?" (* url-char))                      ;; query
+                                  (? "#" (? (* url-char) url-final-char)) ;; fragment
+                                  )))))
     (make-plugin
      name
      (lambda () (void))                 ; enable
