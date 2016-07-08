@@ -74,7 +74,8 @@
                                  ((condition-property-accessor 'exn 'message "Unknown error") exn)
                                  (cons ((condition-property-accessor 'exn 'location (void)) exn)
                                        ((condition-property-accessor 'exn 'arguments '()) exn)))
-                        (describe-url* url)))
+                        (describe-url* url))
+     (close-all-connections!)) ;; http-client connection pool is thread-local!
    (sprintf "Timed out fetching ~s" url)))
 
 #;(begin
